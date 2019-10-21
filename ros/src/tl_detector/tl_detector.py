@@ -39,15 +39,15 @@ class TLDetector(object):
         self.listener = tf.TransformListener()
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
-        
-        
+
+
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=2)
-        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb, queue_size=8)
-        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb, queue_size=2)
-        rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=4)
+        rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb, queue_size=2)
+        rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb, queue_size=1)
+        rospy.Subscriber('/image_color', Image, self.image_cb, queue_size=10)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
-        
+
         rospy.logwarn("tldetector init")
         rospy.spin()
 
@@ -60,7 +60,7 @@ class TLDetector(object):
             # only take the 2d coordinates
             self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
             self.waypoint_tree = KDTree(self.waypoints_2d)
-            
+
     def traffic_cb(self, msg):
 #         rospy.logwarn("traffic callabck")
         self.lights = msg.lights
@@ -83,7 +83,7 @@ class TLDetector(object):
         Each predicted state has to occur `STATE_COUNT_THRESHOLD` number
         of times till we start using it. Otherwise the previous stable state is
         used.
-        
+
         '''
         if self.state != state:
             self.state_count = 0
@@ -124,10 +124,10 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        
+
         if TEST_MODE_ENABLED:
             classification = light.state
-            
+
         else:
             cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
@@ -140,7 +140,7 @@ class TLDetector(object):
             cv2.imwrite(save_file, cv_image)
 
         return classification
-    
+
 #         if(not self.has_image):
 #             self.prev_light_loc = None
 #             return False
@@ -159,7 +159,7 @@ class TLDetector(object):
         elif state == TrafficLight.RED:
             out = "red"
         return out
-    
+
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
             location and color
@@ -172,24 +172,24 @@ class TLDetector(object):
         closest_light = None
         line_wp_idx = -1
         state = TrafficLight.UNKNOWN
-        
+
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
 #         rospy.logwarn("process traffic light")
-        
-        if self.pose and self.waypoint_tree:
+
+        if self.pose:
 #             rospy.logwarn("received pose")
             car_wp_idx = self.get_closest_waypoint(self.pose.pose.position.x, self.pose.pose.position.y)
             rospy.logwarn("car wp idx {}".format(car_wp_idx))
             diff = len(self.base_waypoints.waypoints)
-            
+
             # loop through each light
             for i, light in enumerate(self.lights):
                 # Get stop line waypoint index
                 line = stop_line_positions[i]
                 temp_wp_idx = self.get_closest_waypoint(line[0], line[1])
                 rospy.logwarn("temp_wp_idx {}".format(temp_wp_idx))
-                
+
                 # Find closest stop line waypoint index
                 d = temp_wp_idx - car_wp_idx
                 rospy.logwarn("distance {}".format(d))
@@ -203,10 +203,10 @@ class TLDetector(object):
             state = self.get_light_state(closest_light)
             rospy.logwarn("DETECT: line_wp_idx={}, state={}".format(line_wp_idx, self.to_string(state)))
             return line_wp_idx, state
-        
+
         return -1, TrafficLight.UNKNOWN
-        
-     
+
+
 if __name__ == '__main__':
     try:
         TLDetector()

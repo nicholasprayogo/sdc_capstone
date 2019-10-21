@@ -60,8 +60,8 @@ class DBWNode(object):
 
         # TODO: Subscribe to all the topics you need to
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb, queue_size=1)
-        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cb, queue_size=2)
-        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb, queue_size=5)
+        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cb, queue_size=1)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb, queue_size=1)
 
         self.current_vel = None
         self.curr_ang_vel = None
@@ -74,7 +74,7 @@ class DBWNode(object):
 
     def loop(self):
         # if <PUBRATE Hz, will quit as a safety measure
-        rate = rospy.Rate(PUBRATE) # 50Hz
+        rate = rospy.Rate(20) # 50Hz
         while not rospy.is_shutdown():
             if not None in (self.current_vel, self.linear_vel, self.angular_vel):
                 self.throttle, self.brake, self.steering = self.controller.control(self.current_vel, self.dbw_enabled , self.linear_vel, self.angular_vel)
